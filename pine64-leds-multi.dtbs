@@ -1,0 +1,93 @@
+/dts-v1/;
+/plugin/;
+
+#include "dt-bindings/gpio/gpio.h"
+
+/*
+ * "Raspberry Pi" IO connector on pine64.
+ *
+ *                  +---------+
+ *            +3.3V |  1    2 | +5V
+ *   TWI1-SDA   PH3 |  3    4 | +5V
+ *   TWI1-SCL   PH2 |  5    6 | GND
+ *             PL10 |  7    8 | PB0  (UART_TXD)
+ *              GND |  9   10 | PB1  (UART_RXD)
+ *   LED-gpio0  PC7 | 11   12 | PC8  LED-gpio1
+ *              PH9 | 13   14 | GND
+ *             PC12 | 15   16 | PC13
+ *            +3.3V | 17   18 | PC14
+ *              PC0 | 19   20 | GND
+ *              PC1 | 21   22 | PC15
+ *              PC2 | 23   24 | PC3
+ *              GND | 25   26 | PH7
+ *              PL9 | 27   28 | PL8
+ *              PH5 | 29   30 | GND
+ *              PH6 | 31   32 | PC4
+ *              PC5 | 33   34 | GND
+ *              PC9 | 35   36 | PC6
+ *             PC16 | 37   38 | PC10
+ *              GND | 39   40 | PC11
+ *                  +---------+
+ *
+ *  PAx = <&pio 0 x> ... PHx = <&pio 7 x>
+ *  PLx = <&r_pio 0 x> .. PMx = <&r_pio 1 x>
+ */
+
+&{/} {
+        /* led connected to PC7 and PC8 */
+        leds_gpio_multi {
+                compatible = "leds-gpio-multi";
+                status = "okay";
+                gpios = <&pio 2 7 GPIO_ACTIVE_HIGH>, <&pio 2 8 GPIO_ACTIVE_HIGH>;
+
+                led0 {
+                        label = "button_red";
+                        /*
+                        *  Gpios:  PC8 PC7
+                        *     on:   L   H    mask=0x03 bits=0x01
+                        *    off:   L   L    mask=0x03 bits=0x00
+                        */
+                        mask-bit-on-off = <0x03 0x01 0x00>;
+                };
+
+                led1 {
+                        label = "button_green";
+                        /*
+                        *  Gpios:  PC8 PC7
+                        *     on:   H   L    mask=0x03 bits=0x02
+                        *    off:   L   L    mask=0x03 bits=0x00
+                        */
+                        mask-bit-on-off = <0x03 0x02 0x00>;
+                };
+        };
+};
+
+/* to use this overlay, change /boot/boot.txt (.scr) to read like so:
+
+
+# Set root partition to the second partition of boot device
+part uuid ${devtype} ${devnum}:${bootpart} uuid
+
+setenv bootargs console=${console} root=PARTUUID=${uuid} rw rootwait audit=0
+
+if load ${devtype} ${devnum}:${bootpart} ${kernel_addr_r} /boot/Image; then
+  setenv fdtfile allwinner/sun50i-a64-${board_name}.dtb;
+  if load ${devtype} ${devnum}:${bootpart} ${fdt_addr_r} /boot/dtbs/${fdtfile}; then
+
+    setenv fdtoverlay_addr_r 0x4FA10000;
+    fdt addr ${fdt_addr_r};
+    if load ${devtype} ${devnum}:${bootpart} ${fdtoverlay_addr_r} /boot/overlay.dtb; then
+      fdt resize 8192;
+      fdt apply ${fdtoverlay_addr_r};
+    fi;
+
+    if load ${devtype} ${devnum}:${bootpart} ${ramdisk_addr_r} /boot/initramfs-linux.img; then
+      booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
+    else
+      booti ${kernel_addr_r} - ${fdt_addr_r};
+    fi;
+  fi;
+fi
+
+
+*/
